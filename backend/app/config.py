@@ -25,7 +25,13 @@ class Settings(BaseSettings):
 
     @property
     def sqlite_database_url(self) -> str:
-        return "sqlite:///./homestock.db"
+        data_dir = os.getenv("DATA_DIR", ".")
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+        except Exception:
+            data_dir = "."
+        db_path = os.path.join(data_dir, "homestock.db")
+        return f"sqlite:///{db_path}"
 
     class Config:
         env_file = ".env"
