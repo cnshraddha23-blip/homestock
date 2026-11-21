@@ -5,7 +5,7 @@ import {
   Filter, 
   ArrowUpDown, 
   AlertTriangle, 
-  CheckCircle, 
+  CheckCircle2, 
   XCircle, 
   Utensils, 
   History, 
@@ -15,7 +15,11 @@ import {
   MapPin, 
   Clock, 
   CheckSquare,
-  Sparkles
+  Sparkles,
+  LayoutGrid,
+  List,
+  Layers,
+  ShoppingBag
 } from 'lucide-react';
 import { api } from '../services/api';
 import { Product, Category, StockMovement } from '../types';
@@ -31,6 +35,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [viewLayout, setViewLayout] = useState<'grid' | 'table'>('grid');
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -49,7 +54,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
 
   // Add Product form state
   const [newProdName, setNewProdName] = useState('');
-  const [newProdCatId, setNewProdCatId] = useState<number>(4); // default Grains
+  const [newProdCatId, setNewProdCatId] = useState<number>(4);
   const [newProdUnit, setNewProdUnit] = useState('kg');
   const [newProdMinStock, setNewProdMinStock] = useState<number>(2.0);
   const [newProdQty, setNewProdQty] = useState<number>(5.0);
@@ -164,19 +169,70 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-cream-muted">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-orange">Pantry & Stock Management</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-orange">Pantry & Storage Catalog</span>
           <h1 className="font-serif text-3xl font-bold text-charcoal mt-1">Household Inventory</h1>
           <p className="text-xs text-secondary mt-1">
-            Track current stock, record daily consumption, and monitor batch shelf life.
+            Real-time multi-batch tracking, FIFO pantry consumption, and storage location classification.
           </p>
         </div>
+
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className="flex items-center bg-white p-1 rounded-xl border border-cream-muted shadow-soft">
+            <button
+              onClick={() => setViewLayout('grid')}
+              className={`p-1.5 rounded-lg transition-colors ${viewLayout === 'grid' ? 'bg-orange text-white' : 'text-secondary hover:text-charcoal'}`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewLayout('table')}
+              className={`p-1.5 rounded-lg transition-colors ${viewLayout === 'table' ? 'bg-orange text-white' : 'text-secondary hover:text-charcoal'}`}
+              title="Table View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-orange hover:bg-orange-dark text-white font-semibold text-xs shadow-soft hover:shadow-card transition-all flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Add Product</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Category Filter Pills Ribbon */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-orange hover:bg-orange-dark text-white font-semibold text-xs shadow-soft transition-all flex items-center gap-2 self-start sm:self-auto"
+          onClick={() => setSelectedCategory(undefined)}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex-shrink-0 transition-all ${
+            selectedCategory === undefined 
+              ? 'bg-charcoal text-white shadow-soft' 
+              : 'bg-white border border-cream-muted text-secondary hover:text-charcoal hover:border-orange/50'
+          }`}
         >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Add New Product</span>
+          All Items ({products.length})
         </button>
+        {categories.map((c) => {
+          const isSelected = selectedCategory === c.category_id;
+          return (
+            <button
+              key={c.category_id}
+              onClick={() => setSelectedCategory(isSelected ? undefined : c.category_id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex-shrink-0 transition-all ${
+                isSelected 
+                  ? 'bg-orange text-white shadow-soft' 
+                  : 'bg-white border border-cream-muted text-secondary hover:text-charcoal hover:border-orange/50'
+              }`}
+            >
+              {c.name}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filter and Search Bar */}
@@ -187,57 +243,144 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
           <Search className="w-4 h-4 text-secondary absolute left-3.5 top-3" />
           <input
             type="text"
-            placeholder="Search by product name (e.g. Rice, Milk, Dal)..."
+            placeholder="Search products (e.g. Basmati Rice, Milk, Toor Dal, Everest Masala)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-xl border border-cream-muted text-xs text-charcoal outline-none focus:border-orange bg-cream-light"
           />
         </form>
 
-        {/* Category Dropdown */}
+        {/* Status Dropdown */}
         <div className="flex items-center gap-2">
-          <select
-            value={selectedCategory || ''}
-            onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : undefined)}
-            className="px-3 py-2 rounded-xl border border-cream-muted text-xs text-charcoal font-medium outline-none bg-cream-light"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.category_id} value={c.category_id}>{c.name}</option>
-            ))}
-          </select>
-
-          {/* Status Dropdown */}
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-cream-muted text-xs text-charcoal font-medium outline-none bg-cream-light"
+            className="px-3.5 py-2 rounded-xl border border-cream-muted text-xs text-charcoal font-semibold outline-none bg-cream-light"
           >
             <option value="ALL">All Stock Levels</option>
             <option value="SAFE">Well Stocked</option>
-            <option value="LOW_STOCK">Low Stock</option>
+            <option value="LOW_STOCK">Low Stock Alert</option>
             <option value="OUT_OF_STOCK">Out of Stock</option>
           </select>
         </div>
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-2xl border border-cream-muted shadow-card overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-xs text-secondary animate-pulse">Loading inventory records from MySQL...</div>
-        ) : products.length === 0 ? (
-          <div className="p-12 text-center text-xs text-secondary">
-            No products matched your criteria. Click "Add New Product" or scan a bill to populate inventory.
-          </div>
-        ) : (
+      {/* ========================================================
+          PRODUCTS PRESENTATION: GRID OR TABLE
+          ======================================================== */}
+      {loading ? (
+        <div className="p-16 text-center text-xs text-secondary animate-pulse">Loading inventory records from MySQL...</div>
+      ) : products.length === 0 ? (
+        <div className="p-16 text-center bg-white rounded-2xl border border-cream-muted text-secondary text-xs shadow-soft">
+          No products matched your criteria. Click "Add Product" or scan a bill to populate pantry inventory.
+        </div>
+      ) : viewLayout === 'grid' ? (
+        /* GRID VIEW */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {products.map((p) => {
+            const isLow = p.stock_status === 'LOW_STOCK';
+            const isOut = p.stock_status === 'OUT_OF_STOCK';
+
+            return (
+              <div
+                key={p.product_id}
+                className={`p-5 rounded-2xl bg-white border transition-all duration-300 shadow-soft hover:shadow-card flex flex-col justify-between ${
+                  isOut ? 'border-charcoal/30' : isLow ? 'border-orange/50' : 'border-cream-muted'
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <span className="text-[11px] font-bold text-secondary uppercase tracking-wider">
+                      {p.category_name}
+                    </span>
+                    {isOut ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-charcoal text-white">
+                        Out of Stock
+                      </span>
+                    ) : isLow ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange/15 text-orange-dark border border-orange/30">
+                        Low Stock
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Well Stocked
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="font-bold text-charcoal text-base mb-1">{p.product_name}</h3>
+                  <div className="flex items-center gap-1.5 text-xs text-secondary mb-4">
+                    <MapPin className="w-3.5 h-3.5 text-secondary" />
+                    <span>{p.storage_location}</span>
+                  </div>
+
+                  {/* Stock Metrics Box */}
+                  <div className="p-3.5 rounded-xl bg-cream-light border border-cream-muted space-y-2 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-secondary font-medium">In Pantry:</span>
+                      <span className="font-serif text-xl font-bold text-charcoal">
+                        {p.current_quantity.toFixed(2)} <span className="text-xs font-mono font-normal">{p.default_unit}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-secondary text-[11px] pt-1 border-t border-cream-muted/70">
+                      <span>Threshold Min:</span>
+                      <span className="font-mono text-charcoal">{p.min_stock_level.toFixed(2)} {p.default_unit}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-secondary text-[11px]">
+                      <span>Earliest Expiry:</span>
+                      <span className="font-mono text-charcoal">
+                        {p.earliest_expiry ? (
+                          <span className="text-orange font-bold flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {p.earliest_expiry}
+                          </span>
+                        ) : 'No active batch'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Footer */}
+                <div className="mt-4 pt-3 border-t border-cream-muted flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => handleOpenConsume(p)}
+                    disabled={p.current_quantity <= 0}
+                    className="flex-1 py-2 rounded-xl bg-orange hover:bg-orange-dark text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-all disabled:opacity-30"
+                  >
+                    <Utensils className="w-3.5 h-3.5" />
+                    <span>Consume</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenHistory(p)}
+                    className="p-2 rounded-xl border border-cream-muted text-secondary hover:text-charcoal hover:bg-cream transition-colors"
+                    title="Audit History"
+                  >
+                    <History className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(p.product_id)}
+                    className="p-2 rounded-xl border border-cream-muted text-secondary hover:text-red-600 hover:bg-cream transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* TABLE VIEW */
+        <div className="bg-white rounded-2xl border border-cream-muted shadow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-cream-muted text-secondary font-bold uppercase text-[10px] bg-cream-light/60">
                   <th className="py-3.5 px-4">Product Name</th>
                   <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4">Storage Zone</th>
-                  <th className="py-3.5 px-4 text-center">Available Quantity</th>
+                  <th className="py-3.5 px-4">Location</th>
+                  <th className="py-3.5 px-4 text-center">Available Stock</th>
                   <th className="py-3.5 px-4 text-center">Min Threshold</th>
                   <th className="py-3.5 px-4">Earliest Expiry</th>
                   <th className="py-3.5 px-4">Status</th>
@@ -257,7 +400,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-secondary">{p.category_name}</td>
-                      <td className="py-3.5 px-4 text-secondary font-medium">
+                      <td className="py-3.5 px-4 text-secondary">
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-secondary" />
                           {p.storage_location}
@@ -270,28 +413,15 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
                         {p.min_stock_level.toFixed(2)} {p.default_unit}
                       </td>
                       <td className="py-3.5 px-4 text-secondary font-mono">
-                        {p.earliest_expiry ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-orange" />
-                            {p.earliest_expiry}
-                          </span>
-                        ) : (
-                          'N/A'
-                        )}
+                        {p.earliest_expiry || 'N/A'}
                       </td>
                       <td className="py-3.5 px-4">
                         {isOut ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-charcoal text-white">
-                            Out of Stock
-                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-charcoal text-white">Out of Stock</span>
                         ) : isLow ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange/15 text-orange-dark">
-                            Low Stock
-                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange/15 text-orange-dark">Low Stock</span>
                         ) : (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                            Safe
-                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">Safe</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right">
@@ -300,21 +430,21 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
                             onClick={() => handleOpenConsume(p)}
                             disabled={p.current_quantity <= 0}
                             className="p-1.5 text-secondary hover:text-orange rounded-lg hover:bg-cream disabled:opacity-30"
-                            title="Record Pantry Consumption"
+                            title="Consume"
                           >
                             <Utensils className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleOpenHistory(p)}
                             className="p-1.5 text-secondary hover:text-charcoal rounded-lg hover:bg-cream"
-                            title="View Stock Movement Audit"
+                            title="History"
                           >
                             <History className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(p.product_id)}
                             className="p-1.5 text-secondary hover:text-red-600 rounded-lg hover:bg-cream"
-                            title="Delete Product"
+                            title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -326,8 +456,8 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate }) => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* CONSUME MODAL */}
       {showConsumeModal && activeProduct && (

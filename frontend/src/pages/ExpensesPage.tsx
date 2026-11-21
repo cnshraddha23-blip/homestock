@@ -10,7 +10,12 @@ import {
   IndianRupee,
   Layers,
   Sparkles,
-  Sliders
+  Sliders,
+  Printer,
+  Download,
+  AlertTriangle,
+  CheckCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -209,39 +214,94 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = () => {
             </div>
           </div>
 
+          {/* Budget Consumption Health Meter */}
+          {monthlyData.monthly_budget > 0 && (
+            <div className="p-4 rounded-2xl bg-white border border-cream-muted shadow-soft">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-orange" />
+                  <span className="font-bold text-charcoal">Monthly Grocery Budget Health</span>
+                  <span className="text-secondary text-[11px]">
+                    (₹{monthlyData.total_monthly_expense.toFixed(0)} used of ₹{monthlyData.monthly_budget.toLocaleString('en-IN')})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    (monthlyData.total_monthly_expense / monthlyData.monthly_budget) > 1
+                      ? 'bg-red-100 text-red-700'
+                      : (monthlyData.total_monthly_expense / monthlyData.monthly_budget) > 0.85
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {((monthlyData.total_monthly_expense / monthlyData.monthly_budget) * 100).toFixed(0)}% Utilized
+                  </span>
+                  <button
+                    onClick={() => window.print()}
+                    className="p-1 rounded text-secondary hover:text-charcoal hover:bg-cream"
+                    title="Print report"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="w-full bg-cream-muted h-2.5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-700 ${
+                    (monthlyData.total_monthly_expense / monthlyData.monthly_budget) > 1
+                      ? 'bg-red-500'
+                      : (monthlyData.total_monthly_expense / monthlyData.monthly_budget) > 0.85
+                      ? 'bg-orange'
+                      : 'bg-emerald-600'
+                  }`}
+                  style={{ 
+                    width: `${Math.min(100, (monthlyData.total_monthly_expense / monthlyData.monthly_budget) * 100)}%` 
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Category Breakdown (Pie Chart) */}
-            <div className="p-6 rounded-2xl bg-white border border-cream-muted shadow-card">
-              <h3 className="font-bold text-charcoal text-base mb-1">Category-wise Expenditure</h3>
-              <p className="text-xs text-secondary mb-6">Percentage share of each grocery category</p>
+            <div className="p-6 rounded-2xl bg-white border border-cream-muted shadow-card flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-charcoal text-base mb-1">Category-wise Expenditure</h3>
+                <p className="text-xs text-secondary mb-4">Percentage share of each grocery category</p>
 
-              {monthlyData.category_breakdown.length === 0 ? (
-                <div className="py-16 text-center text-xs text-secondary">No expenses recorded for this month.</div>
-              ) : (
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={monthlyData.category_breakdown}
-                        dataKey="amount"
-                        nameKey="category"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        innerRadius={45}
-                        paddingAngle={3}
-                      >
-                        {monthlyData.category_breakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={PALETTE[index % PALETTE.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: any) => [`₹${Number(value).toFixed(2)}`, 'Spend']} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+                {monthlyData.category_breakdown.length === 0 ? (
+                  <div className="py-16 text-center text-xs text-secondary">No expenses recorded for this month.</div>
+                ) : (
+                  <div className="h-60 relative flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={monthlyData.category_breakdown}
+                          dataKey="amount"
+                          nameKey="category"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={85}
+                          innerRadius={52}
+                          paddingAngle={3}
+                        >
+                          {monthlyData.category_breakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={PALETTE[index % PALETTE.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: any) => [`₹${Number(value).toFixed(2)}`, 'Spend']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Centered Donut Total Callout */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-[10px] text-secondary font-medium uppercase tracking-wider">Total</span>
+                      <span className="text-sm font-bold font-serif text-charcoal">₹{monthlyData.total_monthly_expense.toFixed(0)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Category Pills */}
               <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-cream-muted text-xs">

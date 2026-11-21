@@ -12,7 +12,12 @@ import {
   ShieldCheck, 
   Sparkles,
   TrendingUp,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MapPin,
+  CheckCircle2,
+  ChevronRight,
+  RefreshCw,
+  ShoppingBag
 } from 'lucide-react';
 import { api } from '../services/api';
 import { DashboardSummary } from '../types';
@@ -47,8 +52,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
   if (loading) {
     return (
-      <div className="p-8 space-y-6">
-        <div className="h-8 bg-cream-muted/50 rounded-lg w-64 animate-pulse"></div>
+      <div className="p-8 space-y-6 max-w-7xl mx-auto">
+        <div className="h-10 bg-cream-muted/50 rounded-xl w-72 animate-pulse"></div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="h-32 bg-cream-muted/40 rounded-2xl animate-pulse"></div>
@@ -60,15 +65,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
   if (error || !data) {
     return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-cream-muted m-6">
-        <AlertTriangle className="w-10 h-10 text-orange mx-auto mb-3" />
+      <div className="p-8 text-center bg-white rounded-2xl border border-cream-muted m-6 max-w-lg mx-auto shadow-card">
+        <AlertTriangle className="w-12 h-12 text-orange mx-auto mb-3" />
         <h3 className="text-lg font-bold text-charcoal">Database Connection Error</h3>
         <p className="text-xs text-secondary mt-1">{error}</p>
         <button
           onClick={fetchDashboard}
-          className="mt-4 px-4 py-2 bg-orange text-white text-xs font-semibold rounded-xl"
+          className="mt-4 px-5 py-2.5 bg-orange text-white text-xs font-semibold rounded-xl shadow-soft"
         >
-          Retry Query
+          Retry SQL Query
         </button>
       </div>
     );
@@ -76,18 +81,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
   const { inventory, expenses, expiry, recent_purchases } = data;
 
+  // Calculate Freshness Index
+  const totalBatches = expiry.expiring_in_7_days + expiry.expiring_in_30_days + expiry.expired_products;
+  const safeCount = Math.max(0, inventory.total_products - expiry.expired_products);
+  const freshnessIndex = inventory.total_products > 0 
+    ? Math.round(((inventory.total_products - expiry.expired_products - (expiry.expiring_in_7_days * 0.5)) / inventory.total_products) * 100)
+    : 100;
+
   return (
     <div className="p-6 sm:p-8 space-y-8 max-w-7xl mx-auto">
       
-      {/* Welcome Banner & Quick Action Buttons */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-cream-muted">
+      {/* Header Banner */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-cream-muted">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-orange">Pantry Intelligence Center</span>
-          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal mt-1">
-            Hello, {user?.full_name?.split(' ')[0] || 'User'}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cream-muted text-charcoal text-xs font-bold uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-orange" />
+            <span>Pantry Command Center • Live MySQL Engine</span>
+          </div>
+          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-charcoal">
+            Welcome back, {user?.full_name?.split(' ')[0] || 'User'}
           </h1>
           <p className="text-xs text-secondary mt-1">
-            Your real-time inventory levels, upcoming expirations, and grocery expenses.
+            Real-time household inventory levels, upcoming batch expirations, and monthly grocery expenses.
           </p>
         </div>
 
@@ -95,21 +110,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => onNavigate('scan')}
-            className="px-4 py-2.5 rounded-xl bg-orange hover:bg-orange-dark text-white font-semibold text-xs shadow-soft transition-all flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-orange hover:bg-orange-dark text-white font-semibold text-xs shadow-soft hover:shadow-card transition-all flex items-center gap-2 group"
           >
-            <ScanLine className="w-4 h-4" />
+            <ScanLine className="w-4 h-4 transition-transform group-hover:scale-110" />
             <span>Scan Bill</span>
           </button>
           <button
             onClick={() => onNavigate('inventory')}
-            className="px-4 py-2.5 rounded-xl bg-white border border-cream-muted hover:border-orange/50 text-charcoal font-semibold text-xs shadow-soft transition-all flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-white border border-cream-muted hover:border-orange/60 text-charcoal font-semibold text-xs shadow-soft transition-all flex items-center gap-2"
           >
             <PlusCircle className="w-4 h-4 text-orange" />
             <span>Add Grocery</span>
           </button>
           <button
             onClick={() => onNavigate('shopping-lists')}
-            className="px-4 py-2.5 rounded-xl bg-white border border-cream-muted hover:border-orange/50 text-charcoal font-semibold text-xs shadow-soft transition-all flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-white border border-cream-muted hover:border-orange/60 text-charcoal font-semibold text-xs shadow-soft transition-all flex items-center gap-2"
           >
             <ListPlus className="w-4 h-4 text-orange" />
             <span>Monthly Plan</span>
@@ -119,63 +134,75 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             className="px-4 py-2.5 rounded-xl bg-charcoal hover:bg-charcoal-dark text-white font-semibold text-xs shadow-soft transition-all flex items-center gap-2"
           >
             <Wallet className="w-4 h-4 text-orange" />
-            <span>Expenses</span>
+            <span>Expense Ledger</span>
           </button>
         </div>
       </div>
 
       {/* ========================================================
-          WIDGET A: INVENTORY SUMMARY CARDS
+          WIDGET A: INVENTORY METRIC TILES
           ======================================================== */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-charcoal flex items-center gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-charcoal flex items-center gap-2">
             <Boxes className="w-4 h-4 text-orange" />
-            <span>Inventory Health</span>
+            <span>Pantry Inventory Health</span>
           </h2>
           <button
             onClick={() => onNavigate('inventory')}
             className="text-xs font-semibold text-orange hover:underline flex items-center gap-1"
           >
-            Manage All
+            Explore Catalog
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft">
-            <span className="text-[11px] font-semibold text-secondary block mb-1">Total Products</span>
+          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft hover:shadow-card transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-[11px] font-semibold text-secondary">Total Products</span>
+              <span className="w-2 h-2 rounded-full bg-orange"></span>
+            </div>
             <p className="text-3xl font-serif font-bold text-charcoal">{inventory.total_products}</p>
             <span className="text-[10px] text-secondary mt-1 block">Active household items</span>
           </div>
 
-          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft">
-            <span className="text-[11px] font-semibold text-emerald-700 block mb-1">Well Stocked</span>
+          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft hover:shadow-card transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-[11px] font-semibold text-emerald-700">Well Stocked</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
             <p className="text-3xl font-serif font-bold text-emerald-700">{inventory.available_products}</p>
             <span className="text-[10px] text-secondary mt-1 block">Above safe min threshold</span>
           </div>
 
-          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft">
-            <span className="text-[11px] font-semibold text-orange block mb-1">Low Stock Alert</span>
+          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft hover:shadow-card transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-[11px] font-semibold text-orange">Low Stock Alert</span>
+              <AlertTriangle className="w-3.5 h-3.5 text-orange" />
+            </div>
             <p className="text-3xl font-serif font-bold text-orange">{inventory.low_stock_products}</p>
-            <span className="text-[10px] text-secondary mt-1 block">Needs restock soon</span>
+            <span className="text-[10px] text-secondary mt-1 block">Auto-added to shopping list</span>
           </div>
 
-          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft">
-            <span className="text-[11px] font-semibold text-charcoal block mb-1">Out of Stock</span>
+          <div className="p-5 rounded-2xl bg-white border border-cream-muted shadow-soft hover:shadow-card transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-[11px] font-semibold text-charcoal">Out of Stock</span>
+              <span className="w-2 h-2 rounded-full bg-charcoal"></span>
+            </div>
             <p className="text-3xl font-serif font-bold text-charcoal">{inventory.out_of_stock_products}</p>
-            <span className="text-[10px] text-secondary mt-1 block">Zero inventory in pantry</span>
+            <span className="text-[10px] text-secondary mt-1 block">Zero stock available</span>
           </div>
         </div>
       </div>
 
       {/* ========================================================
-          WIDGET B & C: EXPENSES & EXPIRATION DUAL GRID
+          PANTRY FRESHNESS & EXPENSE DUAL WIDGET
           ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
-        {/* EXPENSE SUMMARY */}
-        <div className="p-6 rounded-2xl bg-white border border-cream-muted shadow-card flex flex-col justify-between">
+        {/* EXPENSE SUMMARY (7 cols) */}
+        <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-cream-muted shadow-card flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-cream-muted mb-4">
               <div className="flex items-center gap-2">
@@ -186,49 +213,49 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                 onClick={() => onNavigate('expenses')}
                 className="text-xs font-semibold text-orange hover:underline flex items-center gap-1"
               >
-                Detailed Breakdown
-                <ArrowUpRight className="w-3 h-3" />
+                Detailed Ledger
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
               <div className="p-4 rounded-xl bg-cream-light border border-cream-muted">
-                <span className="text-xs text-secondary block mb-1">This Month's Spending</span>
-                <p className="text-2xl font-serif font-bold text-charcoal">
+                <span className="text-xs text-secondary block mb-1">Current Month's Spend</span>
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-charcoal">
                   ₹{expenses.current_month_expense.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </p>
-                <span className="text-[10px] text-secondary">
-                  Previous: ₹{expenses.previous_month_expense.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                <span className="text-[10px] text-secondary mt-1 block">
+                  Previous Month: ₹{expenses.previous_month_expense.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
 
               <div className="p-4 rounded-xl bg-cream-light border border-cream-muted">
-                <span className="text-xs text-secondary block mb-1">Annual Expenditure</span>
-                <p className="text-2xl font-serif font-bold text-charcoal">
+                <span className="text-xs text-secondary block mb-1">Cumulative Annual Total</span>
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-charcoal">
                   ₹{expenses.annual_expense.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </p>
-                <span className="text-[10px] text-secondary">
+                <span className="text-[10px] text-secondary mt-1 block">
                   Monthly Avg: ₹{expenses.average_monthly_expense.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
 
-            {/* Monthly Budget Progress Bar */}
+            {/* Target Budget Progress Bar */}
             {expenses.current_month_budget ? (
-              <div className="p-4 rounded-xl bg-cream/60 border border-cream-muted">
-                <div className="flex justify-between items-center text-xs font-semibold mb-2">
+              <div className="p-4 rounded-xl bg-cream/60 border border-cream-muted space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold">
                   <span className="text-charcoal">
-                    Target Budget: ₹{expenses.current_month_budget.toLocaleString('en-IN')}
+                    Monthly Budget: ₹{expenses.current_month_budget.toLocaleString('en-IN')}
                   </span>
                   <span className={expenses.remaining_budget && expenses.remaining_budget >= 0 ? "text-emerald-700 font-bold" : "text-red-600 font-bold"}>
                     {expenses.remaining_budget && expenses.remaining_budget >= 0 
-                      ? `₹${expenses.remaining_budget.toLocaleString('en-IN')} remaining` 
-                      : `Budget exceeded by ₹${Math.abs(expenses.remaining_budget || 0).toLocaleString('en-IN')}`}
+                      ? `₹${expenses.remaining_budget.toLocaleString('en-IN')} headroom left` 
+                      : `Exceeded by ₹${Math.abs(expenses.remaining_budget || 0).toLocaleString('en-IN')}`}
                   </span>
                 </div>
-                <div className="w-full bg-cream-muted rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-cream-muted rounded-full h-2.5 overflow-hidden">
                   <div
-                    className={`h-2 rounded-full transition-all duration-500 ${
+                    className={`h-2.5 rounded-full transition-all duration-500 ${
                       (expenses.remaining_budget || 0) < 0 ? 'bg-red-500' : 'bg-orange'
                     }`}
                     style={{
@@ -241,77 +268,99 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </div>
 
           <div className="pt-4 border-t border-cream-muted mt-4 flex items-center justify-between text-xs text-secondary">
-            <span>Aggregated via SQL View `view_monthly_expense_summary`</span>
-            <span className="font-bold text-charcoal">ACID Verified</span>
+            <span>Non-duplicated calculations from SQL `expenses`</span>
+            <span className="font-bold text-charcoal font-mono">ACID Guaranteed</span>
           </div>
         </div>
 
-        {/* EXPIRY SUMMARY */}
-        <div className="p-6 rounded-2xl bg-white border border-cream-muted shadow-card flex flex-col justify-between">
+        {/* PANTRY FRESHNESS INDEX (5 cols) */}
+        <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-cream-muted shadow-card flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-cream-muted mb-4">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-orange" />
-                <h3 className="font-bold text-charcoal text-base">Expiry Monitoring</h3>
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-charcoal text-base">Freshness Index</h3>
               </div>
               <button
                 onClick={() => onNavigate('expiry')}
                 className="text-xs font-semibold text-orange hover:underline flex items-center gap-1"
               >
-                Inspect All Batches
-                <ArrowUpRight className="w-3 h-3" />
+                Inspect Batches
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="p-4 rounded-xl bg-orange/10 border border-orange/20 text-center">
-                <span className="text-[10px] font-bold uppercase text-orange-dark block mb-1">In 7 Days</span>
-                <p className="text-3xl font-serif font-bold text-orange">{expiry.expiring_in_7_days}</p>
-                <span className="text-[10px] text-secondary">High Priority</span>
+            {/* Circular Gauge Graphic */}
+            <div className="p-4 rounded-xl bg-cream-light border border-cream-muted flex items-center gap-5">
+              <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
+                <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
+                  <path
+                    className="text-cream-muted"
+                    strokeWidth="3.5"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path
+                    className={freshnessIndex > 80 ? "text-emerald-500" : freshnessIndex > 50 ? "text-orange" : "text-red-500"}
+                    strokeDasharray={`${freshnessIndex}, 100`}
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                </svg>
+                <span className="absolute font-serif font-bold text-lg text-charcoal">{freshnessIndex}%</span>
               </div>
-
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
-                <span className="text-[10px] font-bold uppercase text-amber-800 block mb-1">In 30 Days</span>
-                <p className="text-3xl font-serif font-bold text-amber-800">{expiry.expiring_in_30_days}</p>
-                <span className="text-[10px] text-secondary">Approaching</span>
-              </div>
-
-              <div className="p-4 rounded-xl bg-charcoal/5 border border-charcoal/20 text-center">
-                <span className="text-[10px] font-bold uppercase text-charcoal block mb-1">Expired</span>
-                <p className="text-3xl font-serif font-bold text-charcoal">{expiry.expired_products}</p>
-                <span className="text-[10px] text-secondary">Take Action</span>
+              <div>
+                <p className="font-bold text-charcoal text-sm">
+                  {freshnessIndex >= 85 ? "Pantry in Peak Freshness" : freshnessIndex >= 60 ? "Expiring Items Need Attention" : "Immediate Discard Required"}
+                </p>
+                <p className="text-[11px] text-secondary mt-0.5 leading-relaxed">
+                  Based on active batch shelf lives and FIFO consumption cycles.
+                </p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-cream-light border border-cream-muted text-xs text-secondary leading-relaxed flex items-center gap-3">
-              <Clock className="w-4 h-4 text-orange flex-shrink-0" />
-              <span>
-                FIFO consumption strategy automatically marks earliest expiring batches first whenever pantry usage is recorded.
-              </span>
+            {/* Expiry Pill Counters */}
+            <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+              <div className="p-3 bg-orange/10 rounded-xl border border-orange/20">
+                <span className="text-[10px] font-bold uppercase text-orange-dark block">In 7 Days</span>
+                <span className="text-xl font-bold font-serif text-orange">{expiry.expiring_in_7_days}</span>
+              </div>
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                <span className="text-[10px] font-bold uppercase text-amber-800 block">In 30 Days</span>
+                <span className="text-xl font-bold font-serif text-amber-800">{expiry.expiring_in_30_days}</span>
+              </div>
+              <div className="p-3 bg-charcoal/5 rounded-xl border border-charcoal/20">
+                <span className="text-[10px] font-bold uppercase text-charcoal block">Expired</span>
+                <span className="text-xl font-bold font-serif text-charcoal">{expiry.expired_products}</span>
+              </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-cream-muted mt-4 flex items-center justify-between text-xs text-secondary">
-            <span>Visual Badges: Green (Safe), Orange (Warning), Red (Expired)</span>
-          </div>
+          <p className="text-[10px] text-secondary mt-3">
+            Status: Green (Safe), Orange (&le;7 days), Red (Expired).
+          </p>
         </div>
 
       </div>
 
       {/* ========================================================
-          WIDGET D: RECENT PURCHASES (CONFIRMED BILLS)
+          WIDGET D: RECENT CONFIRMED PURCHASES WITH BLOB PREVIEWS
           ======================================================== */}
       <div className="p-6 rounded-2xl bg-white border border-cream-muted shadow-card">
         <div className="flex items-center justify-between pb-3 border-b border-cream-muted mb-4">
           <div className="flex items-center gap-2">
             <Receipt className="w-5 h-5 text-orange" />
-            <h3 className="font-bold text-charcoal text-base">Recent Confirmed Purchases</h3>
+            <h3 className="font-bold text-charcoal text-base">Recent Supermarket Ingestions</h3>
           </div>
           <button
             onClick={() => onNavigate('scan')}
             className="text-xs font-semibold text-orange hover:underline flex items-center gap-1"
           >
-            Upload New Bill
+            Upload Bill Photo
             <ArrowUpRight className="w-3 h-3" />
           </button>
         </div>
@@ -324,38 +373,43 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-cream-muted text-secondary font-bold uppercase text-[10px]">
-                  <th className="py-2.5 px-3">Store Name</th>
-                  <th className="py-2.5 px-3">Purchase Date</th>
-                  <th className="py-2.5 px-3">Bill Receipt Photo</th>
-                  <th className="py-2.5 px-3 text-right">Total Amount</th>
-                  <th className="py-2.5 px-3 text-right">Action</th>
+                <tr className="border-b border-cream-muted text-secondary font-bold uppercase text-[10px] bg-cream-light/40">
+                  <th className="py-3 px-3">Store Name</th>
+                  <th className="py-3 px-3">Date</th>
+                  <th className="py-3 px-3">Image BLOB Status</th>
+                  <th className="py-3 px-3 text-right">Bill Total (₹)</th>
+                  <th className="py-3 px-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-cream-muted/50">
                 {recent_purchases.map((p) => (
-                  <tr key={p.purchase_id} className="hover:bg-cream-light/60 transition-colors">
-                    <td className="py-3 px-3 font-bold text-charcoal">{p.store_name}</td>
-                    <td className="py-3 px-3 text-secondary font-mono">{p.purchase_date}</td>
-                    <td className="py-3 px-3">
+                  <tr key={p.purchase_id} className="hover:bg-cream-light/50 transition-colors">
+                    <td className="py-3.5 px-3 font-bold text-charcoal">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4 text-orange" />
+                        <span>{p.store_name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-3 text-secondary font-mono">{p.purchase_date}</td>
+                    <td className="py-3.5 px-3">
                       {p.has_bill_image ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-[10px] font-bold">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
                           <ImageIcon className="w-3 h-3" />
-                          MySQL BLOB Preserved
+                          MySQL BLOB Active
                         </span>
                       ) : (
-                        <span className="text-[10px] text-secondary font-mono">Manual Ingestion</span>
+                        <span className="text-[10px] text-secondary font-mono">Simulated Ingestion</span>
                       )}
                     </td>
-                    <td className="py-3 px-3 text-right font-bold text-charcoal font-serif text-sm">
+                    <td className="py-3.5 px-3 text-right font-bold text-charcoal font-serif text-sm">
                       ₹{p.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="py-3 px-3 text-right">
+                    <td className="py-3.5 px-3 text-right">
                       <button
                         onClick={() => onNavigate('expenses')}
                         className="text-xs font-semibold text-orange hover:underline"
                       >
-                        View Expense
+                        Ledger Info
                       </button>
                     </td>
                   </tr>
